@@ -1,0 +1,229 @@
+Created on Wed Oct 22 15:42:01 2025
+
+@author: PC-JOAU
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
+# /-/-/-/-/- Estilo global para matplotlib (gráficas oscuras) /-/-/-/-/-
+plt.rcParams.update({
+    'axes.facecolor': '#1e1e1e',
+    'figure.facecolor': '#1e1e1e',
+    'axes.edgecolor': 'white',
+    'axes.labelcolor': 'white',
+    'xtick.color': 'white',
+    'ytick.color': 'white',
+    'text.color': 'white',
+    'grid.color': '#3a3a3a'
+})
+
+
+def generar():
+    try:
+        dist = combo_tipo.get()
+        cantidad = int(entry_cant.get())
+        if cantidad <= 0:
+            messagebox.showerror("Error", "La cantidad debe ser mayor que cero.")
+            return
+
+        valores = []
+
+        # /-/-/-/-/- Ejercicio UNIFORME /-/-/-/-/-
+        if dist == "Uniforme":
+            a = float(entry_param1.get())
+            b = float(entry_param2.get())
+            if a >= b:
+                messagebox.showerror("Error", "El mínimo debe ser menor que el máximo.")
+                return
+            valores = [round(random.uniform(a, b), 2) for _ in range(cantidad)]
+
+        # /-/-/-/-/-Ejercicio  K-ERLANG /-/-/-/-/-
+        elif dist == "k-Erlang":
+            k = float(entry_param1.get())
+            theta = float(entry_param2.get())
+            valores = [round(random.gammavariate(k, theta / k), 2) for _ in range(cantidad)]
+
+        # /-/-/-/-/- Ejercicio EXPONENCIAL /-/-/-/-/-
+        elif dist == "Exponencial":
+            lambd = float(entry_param1.get())
+            valores = [round(random.gammavariate(1, lambd), 2) for _ in range(cantidad)]
+
+        # -/-/-/-/-/--- Ejercicio GAMMA /-/-/-/-/-
+        elif dist == "Gamma":
+            media = float(entry_param1.get())
+            varianza = float(entry_param2.get())
+            forma = (media ** 2) / varianza
+            escala = varianza / media
+            valores = [round(random.gammavariate(forma, escala), 2) for _ in range(cantidad)]
+
+        # /-/-/-/-/-Ejercicio NORMAL /-/-/-/-/-
+        elif dist == "Normal":
+            media = float(entry_param1.get())
+            varianza = float(entry_param2.get())
+            valores = [round(random.normalvariate(media, np.sqrt(varianza)), 2) for _ in range(cantidad)]
+
+        # /-/-/-/-/- Ejercicio WEIBULL /-/-/-/-/-
+        elif dist == "Weibull":
+            forma = float(entry_param1.get())
+            escala = float(entry_param2.get())
+            desplaz = float(entry_param3.get()) if entry_param3.get().strip() != "" else 0
+            valores = [round(desplaz + (escala ** 2) * ((-np.log(1 - random.random())) ** (1 / forma)), 2)
+                       for _ in range(cantidad)]
+
+        #/-/-/-/-/- Limpiar tabla/-/-/-/-/-
+        for item in tabla.get_children():
+            tabla.delete(item)
+
+        # /-/-/-/-/-Insertar nuevos valores/-/-/-/-/-
+        for i, v in enumerate(valores, start=1):
+            tabla.insert("", "end", values=(i, v))
+
+        # /-/-/-/-/-Mostrar gráfico/-/-/-/-/-
+        mostrar_grafico(valores, dist)
+
+    except ValueError as e:
+        messagebox.showerror("Error", "Por favor ingresa valores numéricos válidos.")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error inesperado: {e}")
+
+
+def mostrar_grafico(valores, titulo):
+    for widget in frame_grafico.winfo_children():
+        widget.destroy()
+
+    fig, ax = plt.subplots(figsize=(6, 3.5))
+    n, bins, patches = ax.hist(valores, bins=min(15, len(set(valores))), color="#00b3ff", edgecolor="white", alpha=0.85)
+
+    # Etiquetas de frecuencia
+    for i in range(len(n)):
+        if n[i] > 0:
+            ax.text(bins[i] + (bins[i+1]-bins[i])/2, n[i] + max(n)*0.02, str(int(n[i])),
+                    ha='center', va='bottom', fontsize=9, color='white')
+
+    ax.set_title(f"Distribución {titulo}", fontsize=13, weight="bold", color='white')
+    ax.set_xlabel("Valores", fontsize=11)
+    ax.set_ylabel("Frecuencia", fontsize=11)
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    plt.tight_layout()
+
+    canvas = FigureCanvasTkAgg(fig, master=frame_grafico)
+    canvas.draw()
+    canvas.get_tk_widget().pack()
+
+
+def actualizar_campos(event=None):
+    # Ocultar todos
+    for widget in frame_params.winfo_children():
+        widget.pack_forget()
+
+    dist = combo_tipo.get()
+
+    if dist == "Uniforme":
+        lbl_p1.config(text="Mínimo (a):"); entry_param1.pack(pady=2)
+        lbl_p2.config(text="Máximo (b):"); entry_param2.pack(pady=2)
+        lbl_p1.pack(); lbl_p2.pack()
+
+    elif dist == "k-Erlang":
+        lbl_p1.config(text="Forma (k):"); entry_param1.pack(pady=2)
+        lbl_p2.config(text="Escala (θ):"); entry_param2.pack(pady=2)
+        lbl_p1.pack(); lbl_p2.pack()
+
+    elif dist == "Exponencial":
+        lbl_p1.config(text="Escala (λ):"); entry_param1.pack(pady=2)
+        lbl_p1.pack()
+
+    elif dist == "Gamma":
+        lbl_p1.config(text="Media (μ):"); entry_param1.pack(pady=2)
+        lbl_p2.config(text="Varianza (σ²):"); entry_param2.pack(pady=2)
+        lbl_p1.pack(); lbl_p2.pack()
+
+    elif dist == "Normal":
+        lbl_p1.config(text="Media (μ):"); entry_param1.pack(pady=2)
+        lbl_p2.config(text="Varianza (σ²):"); entry_param2.pack(pady=2)
+        lbl_p1.pack(); lbl_p2.pack()
+
+    elif dist == "Weibull":
+        lbl_p1.config(text="Forma (β):"); entry_param1.pack(pady=2)
+        lbl_p2.config(text="Escala (η):"); entry_param2.pack(pady=2)
+        lbl_p3.config(text="Desplazamiento (opcional):"); entry_param3.pack(pady=2)
+        lbl_p1.pack(); lbl_p2.pack(); lbl_p3.pack()
+
+
+# /////// INTERFAZ //////////////////////////
+ventana = tk.Tk()
+ventana.title("Simulador de Distribuciones Continuas")
+ventana.geometry("520x800")
+ventana.configure(bg="#1e1e1e")
+ventana.resizable(False, False)
+
+# /-/-/-/-/-Estilo ttk/-/-/-/-/-
+style = ttk.Style()
+style.theme_use('clam')
+style.configure("TCombobox", fieldbackground="#2a2a2a", background="#2a2a2a", foreground="white", font=("Segoe UI", 11))
+style.map("TCombobox", fieldbackground=[('readonly', '#2a2a2a')], selectbackground=[('readonly', '#2a2a2a')])
+style.configure("Treeview", background="#252525", foreground="white", fieldbackground="#252525", font=("Segoe UI", 10))
+style.configure("Treeview.Heading", background="#1a1a1a", foreground="white", font=("Segoe UI", 10, "bold"))
+style.map("Treeview", background=[('selected', '#0078D7')])
+
+# /-/-/-/-/-Título/-/-/-/-/-
+tk.Label(ventana, text="Simulador de Distribuciones Continuas", bg="#1e1e1e", fg="white",
+         font=("Segoe UI", 16, "bold")).pack(pady=(15, 10))
+
+#/-/-/-/-/- Selección de distribución/-/-/-/-/-
+tk.Label(ventana, text="Tipo de Distribución:", bg="#1e1e1e", fg="white", font=("Segoe UI", 11)).pack()
+combo_tipo = ttk.Combobox(ventana, values=["Uniforme", "k-Erlang", "Exponencial", "Gamma", "Normal", "Weibull"],
+                          state="readonly", font=("Segoe UI", 11))
+combo_tipo.current(0)
+combo_tipo.pack(pady=5)
+combo_tipo.bind("<<ComboboxSelected>>", actualizar_campos)
+
+# Frame para parámetros
+frame_params = tk.Frame(ventana, bg="#1e1e1e")
+frame_params.pack(pady=10)
+
+# /-/-/-/-/-Crear etiquetas y entradas/-/-/-/-/- (inicialmente ocultas)
+lbl_p1 = tk.Label(frame_params, bg="#1e1e1e", fg="white", font=("Segoe UI", 11))
+lbl_p2 = tk.Label(frame_params, bg="#1e1e1e", fg="white", font=("Segoe UI", 11))
+lbl_p3 = tk.Label(frame_params, bg="#1e1e1e", fg="white", font=("Segoe UI", 11))
+
+entry_config = {"font": ("Segoe UI", 11), "bg": "#2a2a2a", "fg": "white", "insertbackground": "white"}
+entry_param1 = tk.Entry(frame_params, **entry_config)
+entry_param2 = tk.Entry(frame_params, **entry_config)
+entry_param3 = tk.Entry(frame_params, **entry_config)
+
+# Cantidad
+tk.Label(ventana, text="Cantidad de valores:", bg="#1e1e1e", fg="white", font=("Segoe UI", 11)).pack(pady=(10, 0))
+entry_cant = tk.Entry(ventana, **entry_config)
+entry_cant.pack()
+
+# Botón
+btn_generar = tk.Button(
+    ventana, text="📊 Generar Datos", command=generar,
+    bg="#0078D7", fg="white", font=("Segoe UI", 12, "bold"),
+    padx=20, pady=6, relief="flat", cursor="hand2",
+    activebackground="#005a9e"
+)
+btn_generar.pack(pady=15)
+
+# Tabla
+tabla = ttk.Treeview(ventana, columns=("N°", "Valor"), show="headings", height=8)
+tabla.heading("N°", text="N°")
+tabla.heading("Valor", text="Valor")
+tabla.column("N°", width=60, anchor="center")
+tabla.column("Valor", width=120, anchor="center")
+tabla.pack(pady=10)
+
+# Frame para gráfico
+frame_grafico = tk.Frame(ventana, bg="#1e1e1e")
+frame_grafico.pack(pady=10, fill="both", expand=True)
+
+# Inicializar campos
+actualizar_campos()
+
+ventana.mainloop()
